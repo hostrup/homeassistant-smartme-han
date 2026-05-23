@@ -119,24 +119,6 @@ class SmartMeApiClient:
                 elif key.startswith("current_"):
                     suffix = key[-2:].upper()
                     data[key] = raw.get(f"Current{suffix}", 0) * 100 * scale
-                # Adjusting API values back to our standard unit outputs.
-                # Actually, the Smart-me API returns:
-                # ActivePower in kW -> we want W (active_power scale=1) -> raw * 1000 * scale(1) = W
-                # CounterReadingImport in kWh -> we want kWh (scale=0.001 but base is Wh, so let's just use raw directly since it's already kWh)
-            
-            # Recalculate accurately based on expected base values:
-            data = {}
-            if "active_power" in registers_config:
-                data["active_power"] = raw.get("ActivePower", 0) * 1000
-            if "energy_import" in registers_config:
-                data["energy_import"] = raw.get("CounterReadingImport", 0)
-            if "energy_export" in registers_config:
-                data["energy_export"] = raw.get("CounterReadingExport", 0)
-            for phase in ["1", "2", "3"]:
-                if f"voltage_l{phase}" in registers_config:
-                    data[f"voltage_l{phase}"] = raw.get(f"VoltageL{phase}", 0)
-                if f"current_l{phase}" in registers_config:
-                    data[f"current_l{phase}"] = raw.get(f"CurrentL{phase}", 0)
                     
             return data
         except Exception as ex:
