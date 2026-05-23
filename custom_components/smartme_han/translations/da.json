@@ -1,0 +1,64 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Smart-me Kamstrup HAN Opsætning",
+        "description": "Vælg forbindelsesmetode",
+        "menu_options": {
+          "api": "Cloud API",
+          "modbus": "Lokal Modbus TCP"
+        }
+      },
+      "api_auth_type": {
+        "title": "API Godkendelse",
+        "description": "Vælg godkendelsestype",
+        "menu_options": {
+          "basic": "Basic Auth (Brugernavn/Adgangskode)",
+          "apikey": "API-nøgle"
+        }
+      },
+      "api_setup": {
+        "title": "Cloud API Opsætning",
+        "description": "Indtast dine API-oplysninger.\nFind din API-nøgle her: https://portalweb.smart-me.com/api/key",
+        "data": {
+          "username": "Brugernavn",
+          "password": "Adgangskode",
+          "api_key": "API-nøgle"
+        }
+      },
+      "modbus_setup": {
+        "title": "Lokal Modbus Opsætning",
+        "description": "Enhedens IP-adresse skal være låst (statisk via DHCP-reservation i din router).",
+        "data": {
+          "ip_address": "IP-adresse"
+        }
+      },
+      "modbus_fallback": {
+        "title": "Modbus-forbindelse fejlede",
+        "description": "Forbindelse fejlede. Indtast API-nøgle for at forsøge eksperimentel fjernaktivering af Modbus TCP på måleren.",
+        "data": {
+          "api_key": "API-nøgle"
+        }
+      },
+      "reconfigure": {
+        "title": "Opdater opsætning",
+        "description": "Opdater netværks-IP eller API-credentials",
+        "data": {
+          "ip_address": "IP-adresse",
+          "api_key": "API-nøgle",
+          "username": "Brugernavn",
+          "password": "Adgangskode"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Forbindelse fejlede",
+      "invalid_auth": "Ugyldig godkendelse",
+      "unknown": "Ukendt fejl"
+    },
+    "abort": {
+      "already_configured": "Enheden er allerede konfigureret",
+      "reconfigure_successful": "Rekonfiguration var en succes"
+    }
+  }
+}
