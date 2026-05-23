@@ -18,9 +18,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
     client = SmartMeApiClient(
-        api_key=entry.data[CONF_API_KEY],
-        ip_address=entry.data[CONF_IP_ADDRESS]
+        api_key=entry.data.get(CONF_API_KEY, ""),
+        ip_address=entry.data.get(CONF_IP_ADDRESS, "")
     )
+    
+    # Store device_id if available for Cloud API usage
+    client.device_id = entry.data.get("device_id")
 
     coordinator = SmartMeDataUpdateCoordinator(hass, client)
 

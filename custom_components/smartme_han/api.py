@@ -86,10 +86,62 @@ class SmartMeApiClient:
         self._api_key = api_key
         self._ip_address = ip_address
         self._base_url = BASE_URL
-        self._headers = {
-            "Authorization": f"ApiKey {self._api_key}",
-            "Accept": "application/json"
-        }
+        self._headers = {"Accept": "application/json"}
+        self.auth = None
+        if api_key:
+            self._headers["Authorization"] = f"ApiKey {self._api_key}"
+
+    def read_api_data(self, device_id: str, registers_config: dict) -> dict:
+        """Read all defined registers from the Cloud API."""
+        if not device_id:
+            _LOGGER.error("Cannot fetch from API: device_id is missing.")
+            return {}
+            
+        try:
+            response = requests.get(f"{self._base_url}/Devices/{device_id}", headers=self._headers, auth=self.auth, timeout=10)
+            response.raise_for_status()
+            raw = response.json()
+            
+            data = {}
+            for key, config in registers_config.items():
+                scale = config.get("scale", 1.0)
+                # Maps key directly or infers. 
+                # Smart-me API returns ActivePower, CounterReadingImport, CounterReadingExport, VoltageL1, CurrentL1, etc.
+                if key == "active_power":
+                    data[key] = raw.get("ActivePower", 0) * 1000 * scale # API kW -> W if needed
+                elif key == "energy_import":
+                    data[key] = raw.get("CounterReadingImport", 0) * 1000 * scale # API kWh -> API Wh * scale
+                elif key == "energy_export":
+                    data[key] = raw.get("CounterReadingExport", 0) * 1000 * scale
+                elif key.startswith("voltage_"):
+                    suffix = key[-2:].upper()
+                    data[key] = raw.get(f"Voltage{suffix}", 0) * 1000 * scale
+                elif key.startswith("current_"):
+                    suffix = key[-2:].upper()
+                    data[key] = raw.get(f"Current{suffix}", 0) * 100 * scale
+                # Adjusting API values back to our standard unit outputs.
+                # Actually, the Smart-me API returns:
+                # ActivePower in kW -> we want W (active_power scale=1) -> raw * 1000 * scale(1) = W
+                # CounterReadingImport in kWh -> we want kWh (scale=0.001 but base is Wh, so let's just use raw directly since it's already kWh)
+            
+            # Recalculate accurately based on expected base values:
+            data = {}
+            if "active_power" in registers_config:
+                data["active_power"] = raw.get("ActivePower", 0) * 1000
+            if "energy_import" in registers_config:
+                data["energy_import"] = raw.get("CounterReadingImport", 0)
+            if "energy_export" in registers_config:
+                data["energy_export"] = raw.get("CounterReadingExport", 0)
+            for phase in ["1", "2", "3"]:
+                if f"voltage_l{phase}" in registers_config:
+                    data[f"voltage_l{phase}"] = raw.get(f"VoltageL{phase}", 0)
+                if f"current_l{phase}" in registers_config:
+                    data[f"current_l{phase}"] = raw.get(f"CurrentL{phase}", 0)
+                    
+            return data
+        except Exception as ex:
+            _LOGGER.error("Error reading from Smart-me API: %s", ex)
+            return {}
 
     def read_modbus_registers(self, registers_config: dict) -> dict:
         """Read all defined registers from Modbus."""

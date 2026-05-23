@@ -23,16 +23,23 @@ class SmartMeDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def _async_update_data(self) -> dict:
-        """Fetch data from Modbus."""
+        """Fetch data from device or API."""
         try:
-            # Run the synchronous modbus reads in an executor
-            # This will take ~22.5 seconds due to the strict 2.5s polling delay per register
-            data = await self.hass.async_add_executor_job(
-                self.client.read_modbus_registers, REGISTERS
-            )
+            if self.client._ip_address:
+                # Run the synchronous modbus reads in an executor
+                # This will take ~22.5 seconds due to the strict 2.5s polling delay per register
+                data = await self.hass.async_add_executor_job(
+                    self.client.read_modbus_registers, REGISTERS
+                )
+            else:
+                # API polling
+                device_id = getattr(self.client, "device_id", None)
+                data = await self.hass.async_add_executor_job(
+                    self.client.read_api_data, device_id, REGISTERS
+                )
             
             if not data:
-                raise UpdateFailed("Failed to fetch data from Modbus")
+                raise UpdateFailed("Failed to fetch data")
                 
             return data
             
