@@ -34,12 +34,12 @@ To use this integration, you need:
 ### Method 1: Via HACS (Recommended)
 The absolute easiest way to install is through [HACS](https://hacs.xyz/) (Home Assistant Community Store).
 
-1. Open HACS in your Home Assistant.
-2. Click on the three dots menu in the top right corner and select **Custom repositories**.
-3. Paste the URL of this repository: `https://github.com/hostrup/homeassistant-smartme-han`
-4. Select the category **Integration** and click *Add*.
-5. Search for "Smart-me Kamstrup HAN" in HACS and click **Download**.
-6. **Restart Home Assistant**.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hostrup&repository=homeassistant-smartme-han&category=integration)
+
+1. Click the badge above to add this custom repository to your HACS.
+2. If the badge doesn't work, open HACS, click the three dots in the top right corner, select **Custom repositories**, and add `https://github.com/hostrup/homeassistant-smartme-han` as an **Integration**.
+3. Search for "Smart-me Kamstrup HAN" in HACS and click **Download**.
+4. **Restart Home Assistant**.
 
 ### Method 2: Manual Installation
 1. Download the code from the latest release.
@@ -52,7 +52,9 @@ The absolute easiest way to install is through [HACS](https://hacs.xyz/) (Home A
 
 After restarting, the integration can be added directly from the Home Assistant integrations page.
 
-[![Add Integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=smartme_han)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=smartme_han)
+
+*(Note: The setup link above only works AFTER the integration has been installed and Home Assistant has been restarted).*
 
 When setting up the integration, you are guided through a user-friendly flow:
 
