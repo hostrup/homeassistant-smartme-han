@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Smart-me Kamstrup HAN",
+        "data": {
+          "ip_address": "IP Address (Local)",
+          "api_key": "Smart-me API Key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect_cloud": "Failed to connect to the Smart-me Cloud API. Check your API key.",
+      "cannot_connect_modbus": "Failed to connect to Modbus TCP. Check your IP and ensure Modbus is enabled.",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  }
+}

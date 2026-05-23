@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testmiljø og Docker
+test_config/
+docker-compose.yml
+.env
+
+# AI Agent Kontekst og Værktøjer
+.agents/
+AGENTS.md
+
+# OS / Editor filer
+.DS_Store
+.vscode/
+
+# HACS og andre test-integrationer
+custom_components/*
+!custom_components/smartme_han/

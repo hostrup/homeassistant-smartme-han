@@ -1,0 +1,12 @@
+{
+  "domain": "smartme_han",
+  "name": "Smart-me Kamstrup HAN",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/hostrup/smartme_han",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "requirements": ["pymodbus", "requests"],
+  "version": "1.0.0"
+}
