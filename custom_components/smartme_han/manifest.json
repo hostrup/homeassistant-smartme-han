@@ -1,12 +1,13 @@
 {
   "domain": "smartme_han",
   "name": "Smart-me Kamstrup HAN",
-  "codeowners": [],
+  "codeowners": ["@hostrup"],
   "config_flow": true,
-  "dependencies": [],
-  "documentation": "https://github.com/hostrup/smartme_han",
+  "documentation": "https://github.com/hostrup/homeassistant-smartme-han",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "requirements": ["pymodbus", "requests"],
-  "version": "1.0.0"
+  "issue_tracker": "https://github.com/hostrup/homeassistant-smartme-han/issues",
+  "loggers": ["pymodbus"],
+  "requirements": ["pymodbus>=3.8.0"],
+  "version": "1.1.0"
 }

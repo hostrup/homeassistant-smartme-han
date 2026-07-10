@@ -2,11 +2,17 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
 
 # Testmiljø og Docker
 test_config/
 docker-compose.yml
 .env
+*.log
+*.log.*
 
 # AI Agent Kontekst og Værktøjer
 .agents/

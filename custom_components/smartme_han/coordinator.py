@@ -1,47 +1,66 @@
-"""DataUpdateCoordinator for Smart-me Kamstrup HAN."""
+"""DataUpdateCoordinator for the Smart-me Kamstrup HAN integration."""
+
+from __future__ import annotations
+
 import logging
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_IP_ADDRESS
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import SmartMeApiClient
-from .const import DOMAIN, UPDATE_INTERVAL, REGISTERS
+from .api import (
+    SmartMeAuthError,
+    SmartMeCloudApi,
+    SmartMeError,
+    SmartMeModbusApi,
+)
+from .const import (
+    AUTH_TYPE_API_KEY,
+    CONF_AUTH_TYPE,
+    CONF_DEVICE_ID,
+    DOMAIN,
+    UPDATE_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-class SmartMeDataUpdateCoordinator(DataUpdateCoordinator):
-    """Class to manage fetching Smart-me data."""
+SmartMeConfigEntry = ConfigEntry["SmartMeDataUpdateCoordinator"]
 
-    def __init__(self, hass: HomeAssistant, client: SmartMeApiClient) -> None:
-        """Initialize."""
-        self.client = client
+
+class SmartMeDataUpdateCoordinator(DataUpdateCoordinator[dict[str, float]]):
+    """Fetch meter data over Modbus TCP or the Smart-me cloud API."""
+
+    config_entry: SmartMeConfigEntry
+
+    def __init__(self, hass: HomeAssistant, entry: SmartMeConfigEntry) -> None:
+        """Initialize the coordinator with the transport the entry was set up for."""
+        self.api: SmartMeModbusApi | SmartMeCloudApi
+        if host := entry.data.get(CONF_IP_ADDRESS):
+            self.api = SmartMeModbusApi(host)
+        else:
+            self.api = SmartMeCloudApi(
+                async_get_clientsession(hass),
+                entry.data.get(CONF_AUTH_TYPE, AUTH_TYPE_API_KEY),
+                dict(entry.data),
+                entry.data.get(CONF_DEVICE_ID),
+            )
+
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=DOMAIN,
             update_interval=UPDATE_INTERVAL,
         )
 
-    async def _async_update_data(self) -> dict:
-        """Fetch data from device or API."""
+    async def _async_update_data(self) -> dict[str, float]:
+        """Fetch the current meter readings."""
         try:
-            if self.client._ip_address:
-                # Run the synchronous modbus reads in an executor
-                # This will take ~22.5 seconds due to the strict 2.5s polling delay per register
-                data = await self.hass.async_add_executor_job(
-                    self.client.read_modbus_registers, REGISTERS
-                )
-            else:
-                # API polling
-                device_id = getattr(self.client, "device_id", None)
-                data = await self.hass.async_add_executor_job(
-                    self.client.read_api_data, device_id, REGISTERS
-                )
-            
-            if not data:
-                raise UpdateFailed("Failed to fetch data")
-                
-            return data
-            
-        except Exception as err:
-            raise UpdateFailed(f"Error communicating with device: {err}")
+            return await self.api.async_read_all()
+        except SmartMeAuthError as err:
+            raise ConfigEntryAuthFailed(str(err)) from err
+        except SmartMeError as err:
+            raise UpdateFailed(str(err)) from err

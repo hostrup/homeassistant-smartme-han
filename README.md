@@ -15,7 +15,9 @@ This integration allows you to monitor and log data from your Kamstrup electrici
 * **Dual Connection:** Choose between seamless local Modbus TCP (recommended) or Smart-me's Cloud API.
 * **Intelligent Configuration:** Fully integrated Home Assistant UI-based setup (`config_flow`) with Danish and English language support.
 * **Auto-Recovery & Fallback:** If your local Modbus connection fails during setup, the integration offers experimental remote activation of the Modbus port directly via your Smart-me API.
-* **Stability First:** The integration strictly adheres to the Kamstrup meter's technical requirements of a minimum 2.5-second delay for local Modbus calls and executes in a background thread via Home Assistant's `DataUpdateCoordinator`, ensuring your system never freezes.
+* **Stability First:** The integration honours the Kamstrup meter's timing requirements — a minimum delay between Modbus requests, and a longer one before reopening a connection — and reads the nine values in three batched requests rather than nine. A full poll takes about 5.5 seconds.
+* **Fully Asynchronous:** All I/O runs on Home Assistant's event loop — no worker threads are held for the duration of a poll, so startup and the rest of your system stay responsive.
+* **Good Neighbour:** The meter's single TCP slot is released between polls, so other tools can still reach it.
 * **Reconfiguration:** Easily change your IP address, API choice, and credentials via the integration's "Configure" button.
 
 ---
@@ -86,8 +88,10 @@ The integration fetches the following data and creates them as proper `sensor` e
 
 ## ⚠️ Known Limitations and Important Information
 
-* **One Connection at a Time (Modbus TCP):** The HAN module exclusively allows *one* active TCP connection at a time on port 502. Concurrent connection attempts will result in timeouts.
-* **Polling Delay (Modbus TCP):** There is a strict requirement of a minimum 2.5-second delay between requests to avoid dropping data packets. Fetching all registers therefore takes up to 25 seconds. The integration handles this automatically in the background so the system doesn't freeze.
+* **One Connection at a Time (Modbus TCP):** The HAN module exclusively allows *one* active TCP connection at a time on port 502. The integration opens a connection per poll and closes it again, so the meter stays reachable for your other tools for ~54 of every 60 seconds. If a second client (a test instance, a script) polls the same meter, both will see dropped requests.
+* **Polling Delay (Modbus TCP):** The meter requires a minimum 2.5-second delay *between requests* — not between registers. The integration groups the nine values into three contiguous register blocks, so a complete poll costs two delays: **about 5.5 seconds**, measured against real hardware.
+* **Reconnect Delay (Modbus TCP):** After a connection closes, the meter needs roughly 12 seconds before it will serve the first request on a new one. This never matters in steady state, but it means the very first poll after setup takes ~17 seconds. Requests are retried, so a dropped one costs a delay rather than a failed update.
+* **Cloud API Rate Limits:** When polling the cloud API continuously, stay at or above a 30-second interval to avoid being throttled.
 
 ---
 

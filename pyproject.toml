@@ -1,0 +1,27 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Tests import the integration as `custom_components.smartme_han`, mirroring
+# how Home Assistant loads it.
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+  "E",     # pycodestyle
+  "F",     # pyflakes
+  "W",     # pycodestyle warnings
+  "I",     # isort
+  "UP",    # pyupgrade
+  "B",     # bugbear
+  "SIM",   # flake8-simplify
+  "ASYNC", # blocking calls in async code
+  "BLE",   # blind except
+  "D",     # pydocstyle
+  "RUF",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"

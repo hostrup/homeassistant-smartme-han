@@ -1,44 +1,26 @@
 """The Smart-me Kamstrup HAN integration."""
-import logging
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_IP_ADDRESS, CONF_API_KEY
+from __future__ import annotations
+
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .api import SmartMeApiClient
-from .const import DOMAIN
-from .coordinator import SmartMeDataUpdateCoordinator
+from .coordinator import SmartMeConfigEntry, SmartMeDataUpdateCoordinator
 
-_LOGGER = logging.getLogger(__name__)
+PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-PLATFORMS: list[str] = ["sensor"]
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: SmartMeConfigEntry) -> bool:
     """Set up Smart-me Kamstrup HAN from a config entry."""
-    hass.data.setdefault(DOMAIN, {})
-
-    client = SmartMeApiClient(
-        api_key=entry.data.get(CONF_API_KEY, ""),
-        ip_address=entry.data.get(CONF_IP_ADDRESS, "")
-    )
-    
-    # Store device_id if available for Cloud API usage
-    client.device_id = entry.data.get("device_id")
-
-    coordinator = SmartMeDataUpdateCoordinator(hass, client)
-
-    # Fetch initial data so we have state when entities are added
+    coordinator = SmartMeDataUpdateCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data[DOMAIN][entry.entry_id] = coordinator
-
+    entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
 
-    return unload_ok
+async def async_unload_entry(hass: HomeAssistant, entry: SmartMeConfigEntry) -> bool:
+    """Unload a config entry."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

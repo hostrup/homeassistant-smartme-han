@@ -2,50 +2,65 @@
   "config": {
     "step": {
       "user": {
-        "title": "Smart-me Kamstrup HAN Setup",
-        "description": "Choose connection method",
+        "title": "Smart-me Kamstrup HAN",
+        "description": "Choose how Home Assistant should reach your meter.",
         "menu_options": {
-          "api": "Cloud API",
-          "modbus": "Local Modbus TCP"
+          "modbus": "Local Modbus TCP (recommended)",
+          "api": "Smart-me Cloud API"
         }
       },
-      "api_auth_type": {
-        "title": "API Authentication",
-        "description": "Choose authentication type",
+      "api": {
+        "title": "Cloud authentication",
+        "description": "Choose how to sign in to Smart-me.",
         "menu_options": {
-          "basic": "Basic Auth",
-          "apikey": "API Key"
+          "api_key": "API key (recommended)",
+          "api_basic": "Username and password"
         }
       },
-      "api_setup": {
-        "title": "Cloud API Setup",
-        "description": "Enter your API credentials.\nFind your API key here: https://portalweb.smart-me.com/api/key",
+      "api_key": {
+        "title": "Smart-me API key",
+        "description": "Generate an API key at https://portalweb.smart-me.com/api/key",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "api_basic": {
+        "title": "Smart-me account",
+        "description": "Enter the username and password for your Smart-me account.",
         "data": {
           "username": "Username",
-          "password": "Password",
-          "api_key": "API Key"
+          "password": "Password"
         }
       },
-      "modbus_setup": {
-        "title": "Local Modbus Setup",
-        "description": "The device's IP address must be locked (static via DHCP reservation in your router).",
+      "modbus": {
+        "title": "Local Modbus TCP",
+        "description": "Enter the IP address of the HAN module. Reserve it in your router via DHCP, because the module does not support mDNS discovery.",
         "data": {
-          "ip_address": "IP Address"
+          "ip_address": "IP address"
         }
       },
       "modbus_fallback": {
-        "title": "Modbus Connection Failed",
-        "description": "Connection failed. Enter API key to attempt experimental remote activation of Modbus TCP on the meter.",
+        "title": "Modbus port unreachable",
+        "description": "The meter did not answer on port 502. It is often disabled from the factory. Enter an API key and Home Assistant will try to enable Modbus TCP remotely, then connect again.",
         "data": {
-          "api_key": "API Key"
+          "api_key": "API key"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Smart-me",
+        "description": "Your Smart-me credentials are no longer valid. Enter them again.",
+        "data": {
+          "api_key": "API key",
+          "username": "Username",
+          "password": "Password"
         }
       },
       "reconfigure": {
         "title": "Reconfigure Smart-me Kamstrup HAN",
-        "description": "Update connection details",
+        "description": "Update the connection details for this meter.",
         "data": {
-          "ip_address": "IP Address",
-          "api_key": "API Key",
+          "ip_address": "IP address",
+          "api_key": "API key",
           "username": "Username",
           "password": "Password"
         }
@@ -54,11 +69,45 @@
     "error": {
       "cannot_connect": "Failed to connect",
       "invalid_auth": "Invalid authentication",
+      "no_devices": "No meters were found on this Smart-me account",
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "Device is already configured",
-      "reconfigure_successful": "Reconfiguration was successful"
+      "already_configured": "This meter is already configured",
+      "reauth_successful": "Reauthentication was successful",
+      "reconfigure_successful": "Reconfiguration was successful",
+      "unique_id_mismatch": "This is a different meter than the one configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "active_power": {
+        "name": "Active power"
+      },
+      "energy_import": {
+        "name": "Energy import"
+      },
+      "energy_export": {
+        "name": "Energy export"
+      },
+      "voltage_l1": {
+        "name": "Voltage L1"
+      },
+      "voltage_l2": {
+        "name": "Voltage L2"
+      },
+      "voltage_l3": {
+        "name": "Voltage L3"
+      },
+      "current_l1": {
+        "name": "Current L1"
+      },
+      "current_l2": {
+        "name": "Current L2"
+      },
+      "current_l3": {
+        "name": "Current L3"
+      }
     }
   }
 }
