@@ -19,7 +19,7 @@
       },
       "api_key": {
         "title": "Smart-me API key",
-        "description": "Generate an API key at https://portalweb.smart-me.com/api/key",
+        "description": "Generate an API key at {api_key_url}",
         "data": {
           "api_key": "API key"
         }

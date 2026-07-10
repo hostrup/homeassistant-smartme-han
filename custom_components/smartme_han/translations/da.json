@@ -19,7 +19,7 @@
       },
       "api_key": {
         "title": "Smart-me API-nøgle",
-        "description": "Opret en API-nøgle på https://portalweb.smart-me.com/api/key",
+        "description": "Opret en API-nøgle på {api_key_url}",
         "data": {
           "api_key": "API-nøgle"
         }

@@ -30,6 +30,7 @@ from .api import (
     SmartMeModbusApi,
 )
 from .const import (
+    API_KEY_URL,
     AUTH_TYPE_API_KEY,
     AUTH_TYPE_BASIC,
     CONF_AUTH_TYPE,
@@ -127,7 +128,12 @@ class SmartMeConfigFlow(ConfigFlow, domain=DOMAIN):
                     },
                 )
 
-        return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"api_key_url": API_KEY_URL},
+        )
 
     async def async_step_modbus(
         self, user_input: dict[str, Any] | None = None

@@ -29,6 +29,10 @@ AUTH_TYPE_BASIC: Final = "basic"
 API_BASE_URL: Final = "https://api.smart-me.com/api"
 API_TIMEOUT: Final = 10
 
+# Home Assistant forbids URLs in translated strings, so it is passed to the
+# config flow as a description placeholder instead.
+API_KEY_URL: Final = "https://portalweb.smart-me.com/api/key"
+
 MODBUS_PORT: Final = 502
 
 # The meter answers in well under 200 ms when it answers at all, so a short
