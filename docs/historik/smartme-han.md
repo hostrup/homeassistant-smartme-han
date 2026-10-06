@@ -1,7 +1,7 @@
 ---
 type: projekt
 tags: [projekt, homeassistant]
-repo: /hostrup/data/dev/smartme_han
+repo: hostrup/homeassistant-smartme-han
 ---
 # smartme_han
 Home Assistant-integration til SmartMe HAN-måler (elmåler-data).

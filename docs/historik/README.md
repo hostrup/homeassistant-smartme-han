@@ -1,6 +1,6 @@
 # Historik — noter flyttet fra Obsidian-vaulten
 
-Disse noter lå tidligere i `/hostrup/data/vault` (inbox/, projekter/, viden/).
+Disse noter lå tidligere i den fælles vidensbase (inbox/, projekter/, viden/).
 De er flyttet hertil 2026-08-24, fordi projektspecifik viden hører sammen med
 koden den beskriver — versioneret med den, og læst af agenten uden at den
 først skal kende til en vault.
