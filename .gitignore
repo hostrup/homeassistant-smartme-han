@@ -16,6 +16,7 @@ docker-compose.yml
 
 # AI Agent Kontekst og Værktøjer
 .agents/
+.claude/
 AGENTS.md
 
 # OS / Editor filer

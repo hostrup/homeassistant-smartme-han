@@ -79,6 +79,56 @@
       "unique_id_mismatch": "This is a different meter than the one configured"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Smart-me Kamstrup HAN options",
+        "description": "Configure the Smart-me cloud fallback used when the local Modbus TCP connection stops answering.",
+        "menu_options": {
+          "api_key": "Cloud fallback: API key",
+          "api_basic": "Cloud fallback: username and password",
+          "probe_interval": "Recovery probe interval",
+          "disable": "Disable cloud fallback"
+        }
+      },
+      "api_key": {
+        "title": "Cloud fallback API key",
+        "description": "Used only while the local Modbus connection is down. Generate an API key at {api_key_url}",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "api_basic": {
+        "title": "Cloud fallback account",
+        "description": "Used only while the local Modbus connection is down.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "probe_interval": {
+        "title": "Recovery probe interval",
+        "description": "How often Home Assistant tests whether the local Modbus connection has recovered, in seconds.",
+        "data": {
+          "fallback_probe_interval": "Interval"
+        }
+      },
+      "disable": {
+        "title": "Disable cloud fallback",
+        "description": "Home Assistant will stop using the Smart-me cloud API as a fallback for this meter.",
+        "data": {}
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "no_devices": "No meters were found on this Smart-me account",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "options_not_supported": "Cloud fallback is only available for a local Modbus TCP connection."
+    }
+  },
   "entity": {
     "sensor": {
       "active_power": {

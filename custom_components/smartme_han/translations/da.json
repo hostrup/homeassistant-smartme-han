@@ -79,6 +79,56 @@
       "unique_id_mismatch": "Dette er en anden måler end den konfigurerede"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Indstillinger for Smart-me Kamstrup HAN",
+        "description": "Opsæt Smart-me cloud-fallback, som bruges når den lokale Modbus TCP-forbindelse holder op med at svare.",
+        "menu_options": {
+          "api_key": "Cloud-fallback: API-nøgle",
+          "api_basic": "Cloud-fallback: brugernavn og adgangskode",
+          "probe_interval": "Interval for gendannelsestjek",
+          "disable": "Slå cloud-fallback fra"
+        }
+      },
+      "api_key": {
+        "title": "API-nøgle til cloud-fallback",
+        "description": "Bruges kun mens den lokale Modbus-forbindelse er nede. Opret en API-nøgle på {api_key_url}",
+        "data": {
+          "api_key": "API-nøgle"
+        }
+      },
+      "api_basic": {
+        "title": "Konto til cloud-fallback",
+        "description": "Bruges kun mens den lokale Modbus-forbindelse er nede.",
+        "data": {
+          "username": "Brugernavn",
+          "password": "Adgangskode"
+        }
+      },
+      "probe_interval": {
+        "title": "Interval for gendannelsestjek",
+        "description": "Hvor ofte Home Assistant tester, om den lokale Modbus-forbindelse er kommet tilbage, i sekunder.",
+        "data": {
+          "fallback_probe_interval": "Interval"
+        }
+      },
+      "disable": {
+        "title": "Slå cloud-fallback fra",
+        "description": "Home Assistant holder op med at bruge Smart-me cloud API som fallback for denne måler.",
+        "data": {}
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke forbinde",
+      "invalid_auth": "Ugyldig godkendelse",
+      "no_devices": "Der blev ikke fundet nogen målere på denne Smart-me-konto",
+      "unknown": "Uventet fejl"
+    },
+    "abort": {
+      "options_not_supported": "Cloud-fallback er kun tilgængeligt for en lokal Modbus TCP-forbindelse."
+    }
+  },
   "entity": {
     "sensor": {
       "active_power": {

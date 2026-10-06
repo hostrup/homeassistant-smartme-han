@@ -8,15 +8,19 @@ from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_IP_ADDRESS,
     CONF_PASSWORD,
     CONF_USERNAME,
 )
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
@@ -34,9 +38,15 @@ from .const import (
     AUTH_TYPE_API_KEY,
     AUTH_TYPE_BASIC,
     CONF_AUTH_TYPE,
+    CONF_CLOUD_FALLBACK_ENABLED,
     CONF_DEVICE_ID,
+    CONF_FALLBACK_PROBE_INTERVAL,
+    DEFAULT_FALLBACK_PROBE_INTERVAL,
     DOMAIN,
+    MAX_FALLBACK_PROBE_INTERVAL,
+    MIN_FALLBACK_PROBE_INTERVAL,
 )
+from .coordinator import SmartMeConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +60,19 @@ BASIC_AUTH_SCHEMA = vol.Schema(
     }
 )
 MODBUS_SCHEMA = vol.Schema({vol.Required(CONF_IP_ADDRESS): TextSelector()})
+PROBE_INTERVAL_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_FALLBACK_PROBE_INTERVAL): NumberSelector(
+            NumberSelectorConfig(
+                min=MIN_FALLBACK_PROBE_INTERVAL,
+                max=MAX_FALLBACK_PROBE_INTERVAL,
+                step=30,
+                mode=NumberSelectorMode.BOX,
+                unit_of_measurement="s",
+            )
+        )
+    }
+)
 
 # The meter needs a moment to bring port 502 up after the cloud enables it.
 MODBUS_ENABLE_SETTLE_DELAY = 5
@@ -63,6 +86,14 @@ class SmartMeConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize the flow."""
         self._host: str | None = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: SmartMeConfigEntry,
+    ) -> SmartMeOptionsFlow:
+        """Return the options flow for an existing entry."""
+        return SmartMeOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -295,6 +326,120 @@ class SmartMeConfigFlow(ConfigFlow, domain=DOMAIN):
         self, auth_type: str, credentials: dict[str, Any]
     ) -> str:
         """Return the device ID the credentials give access to."""
+        api = SmartMeCloudApi(
+            async_get_clientsession(self.hass), auth_type, credentials
+        )
+        return await api.async_get_first_device_id()
+
+
+class SmartMeOptionsFlow(OptionsFlow):
+    """Configure the cloud fallback of a locally configured (Modbus) meter."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Show the cloud-fallback menu."""
+        if CONF_IP_ADDRESS not in self.config_entry.data:
+            # The cloud API is already the primary transport; there is nothing
+            # to fall back from.
+            return self.async_abort(reason="options_not_supported")
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["api_key", "api_basic", "probe_interval", "disable"],
+        )
+
+    async def async_step_api_key(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Store a Smart-me API key to use as the cloud fallback."""
+        return await self._async_save_credentials(
+            "api_key", API_KEY_SCHEMA, AUTH_TYPE_API_KEY, user_input
+        )
+
+    async def async_step_api_basic(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Store Smart-me account credentials to use as the cloud fallback."""
+        return await self._async_save_credentials(
+            "api_basic", BASIC_AUTH_SCHEMA, AUTH_TYPE_BASIC, user_input
+        )
+
+    async def _async_save_credentials(
+        self,
+        step_id: str,
+        schema: vol.Schema,
+        auth_type: str,
+        user_input: dict[str, Any] | None,
+    ) -> ConfigFlowResult:
+        """Validate fallback credentials and store them in the entry options."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                device_id = await self._async_validate_cloud(auth_type, user_input)
+            except SmartMeAuthError:
+                errors["base"] = "invalid_auth"
+            except SmartMeConnectionError:
+                errors["base"] = "cannot_connect"
+            except SmartMeError:
+                errors["base"] = "no_devices"
+            except Exception:
+                _LOGGER.exception("Unexpected error validating the cloud fallback")
+                errors["base"] = "unknown"
+            else:
+                return self.async_create_entry(
+                    data={
+                        **self.config_entry.options,
+                        **user_input,
+                        CONF_AUTH_TYPE: auth_type,
+                        CONF_DEVICE_ID: device_id,
+                        CONF_CLOUD_FALLBACK_ENABLED: True,
+                    }
+                )
+
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"api_key_url": API_KEY_URL},
+        )
+
+    async def async_step_probe_interval(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Set how often the local link is probed for recovery."""
+        if user_input is not None:
+            return self.async_create_entry(
+                data={**self.config_entry.options, **user_input}
+            )
+
+        current = self.config_entry.options.get(
+            CONF_FALLBACK_PROBE_INTERVAL, DEFAULT_FALLBACK_PROBE_INTERVAL
+        )
+        return self.async_show_form(
+            step_id="probe_interval",
+            data_schema=self.add_suggested_values_to_schema(
+                PROBE_INTERVAL_SCHEMA, {CONF_FALLBACK_PROBE_INTERVAL: current}
+            ),
+        )
+
+    async def async_step_disable(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Turn the cloud fallback off."""
+        if user_input is not None:
+            options = dict(self.config_entry.options)
+            options[CONF_CLOUD_FALLBACK_ENABLED] = False
+            for key in (CONF_API_KEY, CONF_USERNAME, CONF_PASSWORD):
+                options.pop(key, None)
+            return self.async_create_entry(data=options)
+
+        return self.async_show_form(step_id="disable", data_schema=vol.Schema({}))
+
+    async def _async_validate_cloud(
+        self, auth_type: str, credentials: dict[str, Any]
+    ) -> str:
+        """Return the device ID the given fallback credentials give access to."""
         api = SmartMeCloudApi(
             async_get_clientsession(self.hass), auth_type, credentials
         )

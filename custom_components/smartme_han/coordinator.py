@@ -5,7 +5,12 @@ from __future__ import annotations
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_IP_ADDRESS
+from homeassistant.const import (
+    CONF_API_KEY,
+    CONF_IP_ADDRESS,
+    CONF_PASSWORD,
+    CONF_USERNAME,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -15,12 +20,17 @@ from .api import (
     SmartMeAuthError,
     SmartMeCloudApi,
     SmartMeError,
+    SmartMeFailoverApi,
     SmartMeModbusApi,
 )
 from .const import (
     AUTH_TYPE_API_KEY,
+    AUTH_TYPE_BASIC,
     CONF_AUTH_TYPE,
+    CONF_CLOUD_FALLBACK_ENABLED,
     CONF_DEVICE_ID,
+    CONF_FALLBACK_PROBE_INTERVAL,
+    DEFAULT_FALLBACK_PROBE_INTERVAL,
     DOMAIN,
     UPDATE_INTERVAL,
 )
@@ -37,16 +47,30 @@ class SmartMeDataUpdateCoordinator(DataUpdateCoordinator[dict[str, float]]):
 
     def __init__(self, hass: HomeAssistant, entry: SmartMeConfigEntry) -> None:
         """Initialize the coordinator with the transport the entry was set up for."""
-        self.api: SmartMeModbusApi | SmartMeCloudApi
-        if host := entry.data.get(CONF_IP_ADDRESS):
-            self.api = SmartMeModbusApi(host)
+        # Options override data, so the options flow can add or change the cloud
+        # fallback credentials of a locally configured meter after setup.
+        settings = {**entry.data, **entry.options}
+        host = settings.get(CONF_IP_ADDRESS)
+
+        if host:
+            primary: SmartMeModbusApi | SmartMeCloudApi = SmartMeModbusApi(host)
         else:
-            self.api = SmartMeCloudApi(
+            primary = SmartMeCloudApi(
                 async_get_clientsession(hass),
-                entry.data.get(CONF_AUTH_TYPE, AUTH_TYPE_API_KEY),
-                dict(entry.data),
-                entry.data.get(CONF_DEVICE_ID),
+                settings.get(CONF_AUTH_TYPE, AUTH_TYPE_API_KEY),
+                dict(settings),
+                settings.get(CONF_DEVICE_ID),
             )
+
+        self.api = SmartMeFailoverApi(
+            primary,
+            self._async_build_cloud_fallback(hass, settings) if host else None,
+            probe_interval=float(
+                settings.get(
+                    CONF_FALLBACK_PROBE_INTERVAL, DEFAULT_FALLBACK_PROBE_INTERVAL
+                )
+            ),
+        )
 
         super().__init__(
             hass,
@@ -54,6 +78,29 @@ class SmartMeDataUpdateCoordinator(DataUpdateCoordinator[dict[str, float]]):
             config_entry=entry,
             name=DOMAIN,
             update_interval=UPDATE_INTERVAL,
+        )
+
+    @staticmethod
+    def _async_build_cloud_fallback(
+        hass: HomeAssistant, settings: dict[str, object]
+    ) -> SmartMeCloudApi | None:
+        """Build the cloud fallback for a Modbus meter, if it is configured."""
+        if not settings.get(CONF_CLOUD_FALLBACK_ENABLED, True):
+            return None
+        auth_type = settings.get(CONF_AUTH_TYPE, AUTH_TYPE_API_KEY)
+        if auth_type == AUTH_TYPE_BASIC:
+            configured = bool(
+                settings.get(CONF_USERNAME) and settings.get(CONF_PASSWORD)
+            )
+        else:
+            configured = bool(settings.get(CONF_API_KEY))
+        if not configured:
+            return None
+        return SmartMeCloudApi(
+            async_get_clientsession(hass),
+            auth_type,
+            dict(settings),
+            settings.get(CONF_DEVICE_ID),
         )
 
     async def _async_update_data(self) -> dict[str, float]:

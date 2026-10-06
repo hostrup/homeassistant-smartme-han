@@ -14,7 +14,7 @@ This integration allows you to monitor and log data from your Kamstrup electrici
 
 * **Dual Connection:** Choose between seamless local Modbus TCP (recommended) or Smart-me's Cloud API.
 * **Intelligent Configuration:** Fully integrated Home Assistant UI-based setup (`config_flow`) with Danish and English language support.
-* **Auto-Recovery & Fallback:** If your local Modbus connection fails during setup, the integration offers experimental remote activation of the Modbus port directly via your Smart-me API.
+* **Auto-Recovery & Fallback:** If your local Modbus connection fails during setup, the integration offers experimental remote activation of the Modbus port directly via your Smart-me API. And if it drops later, it automatically falls back to the Smart-me Cloud API and heals itself back to the local link once the meter answers again — see [Automatic Cloud Fallback](#-automatic-cloud-fallback-auto-heal).
 * **Stability First:** The integration honours the Kamstrup meter's timing requirements — a minimum delay between Modbus requests, and a longer one before reopening a connection — and reads the nine values in three batched requests rather than nine. A full poll takes about 5.5 seconds.
 * **Fully Asynchronous:** All I/O runs on Home Assistant's event loop — no worker threads are held for the duration of a poll, so startup and the rest of your system stay responsive.
 * **Good Neighbour:** The meter's single TCP slot is released between polls, so other tools can still reach it.
@@ -67,6 +67,37 @@ When setting up the integration, you are guided through a user-friendly flow:
 3. **Local Modbus TCP (Recommended):**
    * Enter the locked IP address of your module.
    * *Test failing?* The Modbus port (502) on the module might be disabled by default. The integration will catch the error and let you enter your API key to attempt sending an asynchronous activation command to the module via the cloud, after which it tests the local access again.
+
+---
+
+## 🔁 Automatic Cloud Fallback (Auto-Heal)
+
+If your meter is configured for **Local Modbus TCP**, Home Assistant can keep monitoring it even when the module's Modbus TCP port stops answering. This happens occasionally: the port hangs while the Smart-me cloud API keeps working normally.
+
+How it works:
+
+1. The integration counts **consecutive** Modbus connection failures. After **3 in a row** it automatically switches to the **Smart-me Cloud API**, so your sensors stay available without gaps.
+2. While the local link is down it keeps polling the cloud and quietly tests the Modbus port again every 5 minutes (configurable).
+3. As soon as the meter answers locally, the integration switches back to the local connection. The switch is invisible to your dashboards and history, because the entity IDs and unique IDs never change.
+
+The fallback is skipped automatically when no cloud credentials are configured, and authentication errors are never masked by it — only genuine connection failures trigger the switch.
+
+### Configuring the fallback
+
+1. Open **Settings → Devices & Services → Smart-me Kamstrup HAN** and click **Configure** on a meter that uses **Local Modbus TCP**.
+2. Choose one:
+   * **Cloud fallback: API key** — paste a Smart-me API key (generate one on the [Smart-me Portal](https://portalweb.smart-me.com/api/key)).
+   * **Cloud fallback: username and password** — use your Smart-me account.
+   * **Recovery probe interval** — how often, in seconds (default `300`), Home Assistant tests whether the local link has recovered.
+   * **Disable cloud fallback** — stop using the cloud as a fallback.
+3. Save. The integration reloads automatically, so the change applies to the next poll.
+
+> The fallback is available **only for Local Modbus TCP entries**. A pure Cloud API entry already uses the cloud and has nothing to fall back from.
+
+| Setting | Default | Meaning |
+| :--- | :--- | :--- |
+| Failure threshold | 3 | Consecutive Modbus failures before switching to the cloud (fixed) |
+| Probe interval | 300 s | How often the local Modbus port is retested while on the cloud fallback |
 
 ---
 

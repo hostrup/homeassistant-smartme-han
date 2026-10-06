@@ -7,7 +7,7 @@ import inspect
 import logging
 import struct
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final
 
@@ -19,6 +19,8 @@ from .const import (
     API_BASE_URL,
     API_TIMEOUT,
     AUTH_TYPE_BASIC,
+    DEFAULT_FALLBACK_PROBE_INTERVAL,
+    FALLBACK_FAILURE_THRESHOLD,
     MODBUS_BLOCK_ATTEMPTS,
     MODBUS_BLOCKS,
     MODBUS_PORT,
@@ -318,3 +320,103 @@ class SmartMeCloudApi:
         if not values:
             raise SmartMeError("Smart-me returned no usable measurements")
         return values
+
+
+class SmartMeFailoverApi:
+    """Read from a primary transport, falling back to the cloud when it fails.
+
+    Only a locally configured meter uses this wrapper: Modbus TCP is the primary
+    transport and the Smart-me cloud API is the fallback. Consecutive
+    connection failures are counted, and once they reach the threshold the
+    wrapper switches to the cloud so the meter stays available. It then probes
+    the local link again at a fixed interval, so it returns to Modbus TCP as
+    soon as the module answers again. Authentication errors are never masked by
+    the fallback -- only genuine connection failures are.
+    """
+
+    def __init__(
+        self,
+        primary: SmartMeModbusApi | SmartMeCloudApi,
+        fallback: SmartMeCloudApi | None,
+        *,
+        failure_threshold: int = FALLBACK_FAILURE_THRESHOLD,
+        probe_interval: float = DEFAULT_FALLBACK_PROBE_INTERVAL,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        """Initialize the failover wrapper."""
+        self._primary = primary
+        self._fallback = fallback
+        self._failure_threshold = failure_threshold
+        self._probe_interval = probe_interval
+        self._clock = clock
+        self._consecutive_failures = 0
+        self._using_fallback = False
+        self._next_probe = 0.0
+
+    @property
+    def device_identifier(self) -> str:
+        """Return the primary transport's identifier, stable across failovers."""
+        return self._primary.device_identifier
+
+    @property
+    def using_fallback(self) -> bool:
+        """Return whether the cloud fallback is currently serving the data."""
+        return self._using_fallback
+
+    @property
+    def consecutive_failures(self) -> int:
+        """Return the number of consecutive primary failures so far."""
+        return self._consecutive_failures
+
+    async def async_read_all(self) -> dict[str, float]:
+        """Read every sensor value from the active transport."""
+        if self._using_fallback:
+            return await self._async_read_fallback()
+        return await self._async_read_primary()
+
+    async def _async_read_primary(self) -> dict[str, float]:
+        """Read the primary transport, switching to the fallback when it is down."""
+        try:
+            data = await self._primary.async_read_all()
+        except SmartMeConnectionError:
+            self._consecutive_failures += 1
+            if (
+                self._fallback is None
+                or self._consecutive_failures < self._failure_threshold
+            ):
+                raise
+            _LOGGER.warning(
+                "Primary transport failed %s times in a row; "
+                "switching to the cloud fallback",
+                self._consecutive_failures,
+            )
+            self._enter_fallback()
+            return await self._async_read_fallback()
+        self._consecutive_failures = 0
+        return data
+
+    def _enter_fallback(self) -> None:
+        """Enter fallback mode and schedule the next recovery probe."""
+        self._using_fallback = True
+        self._consecutive_failures = 0
+        self._next_probe = self._clock() + self._probe_interval
+
+    async def _async_read_fallback(self) -> dict[str, float]:
+        """Read the cloud fallback, probing the primary when it is due."""
+        if self._clock() >= self._next_probe:
+            try:
+                data = await self._primary.async_read_all()
+            except SmartMeConnectionError:
+                self._next_probe = self._clock() + self._probe_interval
+            else:
+                _LOGGER.info(
+                    "Primary transport recovered; switching back from the "
+                    "cloud fallback"
+                )
+                self._using_fallback = False
+                self._consecutive_failures = 0
+                return data
+
+        # _using_fallback is only ever set while a fallback exists.
+        assert self._fallback is not None
+        return await self._fallback.async_read_all()

@@ -23,6 +23,10 @@ DOMAIN: Final = "smartme_han"
 CONF_AUTH_TYPE: Final = "auth_type"
 CONF_DEVICE_ID: Final = "device_id"
 
+# Cloud-fallback settings for a locally configured (Modbus TCP) meter.
+CONF_CLOUD_FALLBACK_ENABLED: Final = "cloud_fallback_enabled"
+CONF_FALLBACK_PROBE_INTERVAL: Final = "fallback_probe_interval"
+
 AUTH_TYPE_API_KEY: Final = "apikey"
 AUTH_TYPE_BASIC: Final = "basic"
 
@@ -62,6 +66,18 @@ MODBUS_READ_TIMEOUT: Final = 60
 
 # The cloud API rate-limits continuous polling below 30 s.
 UPDATE_INTERVAL: Final = timedelta(seconds=60)
+
+# The HAN module's Modbus TCP port occasionally stops answering while the
+# Smart-me cloud API keeps working. After this many consecutive connection
+# failures the coordinator fails over to the cloud (when credentials are
+# available), and then probes the local link again at this interval so it can
+# switch back as soon as the meter responds.
+FALLBACK_FAILURE_THRESHOLD: Final = 3
+DEFAULT_FALLBACK_PROBE_INTERVAL: Final = 300
+
+# Bounds for the probe interval exposed in the options flow.
+MIN_FALLBACK_PROBE_INTERVAL: Final = 30
+MAX_FALLBACK_PROBE_INTERVAL: Final = 86400
 
 
 @dataclass(frozen=True, kw_only=True)
