@@ -14,14 +14,14 @@ tags: [homeassistant, smartme-han, modbus, kamstrup, hardware, fejlsøgning]
 - **~12 s efter en forbindelse lukkes**, før modulet besvarer den første forespørgsel på en ny. Målt: 2,5 / 5 / 8 s droppes, 12 s besvares. TCP-handshaket lykkes hele vejen — forbindelsen *accepteres*, men serviceres ikke. Det er den hyppigste kilde til "uforklarlige" timeouts lige efter opsætning eller reload.
 
 ## Fælden: måleren har ét TCP-slot
-Modulet tillader **én** aktiv Modbus TCP-forbindelse. Prod-HA på `192.168.1.10` poller den kontinuerligt. Kører man samtidig hardware-tests fra serveren (eller dev-containeren i repoet), slås de to om slottet, og **begge parter** ser tilfældigt droppede forespørgsler.
+Modulet tillader **én** aktiv Modbus TCP-forbindelse. Prod-HA på `192.168.1.100` poller den kontinuerligt. Kører man samtidig hardware-tests fra serveren (eller dev-containeren i repoet), slås de to om slottet, og **begge parter** ser tilfældigt droppede forespørgsler.
 
 Det kostede reelt: jeg konkluderede først at måleren havde en "opvågningsadfærd", og byggede en persistent forbindelse oven på den antagelse. Efter at have deaktiveret integrationen på prod og gentaget forsøgene viste genforbindelse sig at koste *ingenting* — og en persistent forbindelse ville have monopoliseret målerens eneste slot permanent, så dev og prod aldrig kunne køre samtidig. Rullet tilbage.
 
 **Visuel repræsentation af TCP-kollision:**
 ```mermaid
 sequenceDiagram
-    participant ProdHA as Prod HA (192.168.1.10)
+    participant ProdHA as Prod HA (192.168.1.100)
     participant DevEnv as Dev/Test Script
     participant Meter as SmartMe HAN
     
@@ -42,7 +42,7 @@ sequenceDiagram
     Meter-->>DevEnv: Data returneres korrekt
 ```
 
-**Regel fremadrettet:** deaktivér `smartme_han` på `192.168.1.10` før enhver hardware-test mod måleren, og genaktivér bagefter (ellers mister vi måledata imens).
+**Regel fremadrettet:** deaktivér `smartme_han` på `192.168.1.100` før enhver hardware-test mod måleren, og genaktivér bagefter (ellers mister vi måledata imens).
 
 ## pymodbus-faldgruber
 - `reconnect_delay=0` er giftigt: `connect()` melder succes på en forbindelse der med mellemrum ikke transporterer nogen forespørgsler (målt 0/4 svar, to gange). Brug en værdi > 0.
@@ -50,6 +50,6 @@ sequenceDiagram
 - Pin **ikke** pymodbus eksakt i `manifest.json`. HA core pinner selv en version til sin indbyggede `modbus`-integration (2026.5 → `3.11.2`); en eksakt pin fra en custom component giver pip-konflikt for brugere der har begge. Brug `pymodbus>=3.8.0`.
 
 ## Resultat
-Poll gik fra 23,6 s til ~5,5 s — verificeret i drift på `192.168.1.10`, ikke kun på testbænken. Opstarten blokeres ikke længere, og forbindelsen frigives mellem polls, så andre værktøjer kan nå måleren ~54 af hver 60 sekunder.
+Poll gik fra 23,6 s til ~5,5 s — verificeret i drift på `192.168.1.100`, ikke kun på testbænken. Opstarten blokeres ikke længere, og forbindelsen frigives mellem polls, så andre værktøjer kan nå måleren ~54 af hver 60 sekunder.
 
 **Links:** `[[smartme-han]]` · repo `hostrup/homeassistant-smartme-han` · den lokale agent-skill i repoet er opdateret tilsvarende (gitignored, så den følger ikke med til HACS).
